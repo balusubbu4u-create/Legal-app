@@ -106,7 +106,7 @@ if st.button("కేస్ విశ్లేషించండి (Analyze)", t
                     )
 
                 response = client.models.generate_content(
-                    model="gemini-1.5-flash",
+                    model="gemini-1.5-flash-latest",
                     contents=content
                 )
 
