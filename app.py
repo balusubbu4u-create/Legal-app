@@ -1,11 +1,11 @@
 import streamlit as st
 from PIL import Image
-from google import genai
+import google.generativeai as genai
 
-# మీ API Key ని ఇక్కడ ఉంచండి
-GEMINI_API_KEY = "AQ.Ab8RN6IELJB2yhussCFa7xQXyAQf1U6VGs3xDlCn22nX5Ve-GA"
+# మీ స్క్రీన్‌షాట్‌లో ఉన్న API Key ఇక్కడ సెట్ చేయబడింది
+GEMINI_API_KEY = "AQ.Ab8RN6Jg5AChTJxLLL6UtpZqp3a-ewxJo..." # మీ పూర్తి కీని ఇక్కడ పేస్ట్ చేయండి
 
-client = genai.Client(api_key=GEMINI_API_KEY)
+genai.configure(api_key=AQ.Ab8RN6Jg5AChTJxLLL6UtpZqp3a-ewxJoKmYyKtdQydons5gWQ)
 
 st.set_page_config(page_title="BNS Legal Assistant", page_icon="⚖️", layout="centered")
 
@@ -43,16 +43,17 @@ if st.button("కేస్ విశ్లేషించండి (Analyze)", t
             4. **దర్యాప్తు అధికారికి దశలవారీ మార్గదర్శకాలు (Step-by-Step Investigation SOP for IO)**.
             """
             try:
-                contents = [prompt]
+                # అత్యంత వేగవంతమైన మరియు స్థిరమైన మోడల్
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                
+                content_inputs = [prompt]
                 if uploaded_image:
-                    contents.append(uploaded_image)
+                    content_inputs.append(uploaded_image)
                 if case_text:
-                    contents.append(f"అదనపు వివరాలు: {case_text}")
+                    content_inputs.append(f"అదనపు వివరాలు: {case_text}")
 
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=contents
-                )
+                response = model.generate_content(content_inputs)
+                
                 st.markdown("### 📋 దర్యాప్తు నివేదిక:")
                 st.markdown(response.text)
             except Exception as e:
