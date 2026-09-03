@@ -5,8 +5,7 @@ import google.generativeai as genai
 # మీ స్క్రీన్‌షాట్‌లో ఉన్న API Key ఇక్కడ సెట్ చేయబడింది
 GEMINI_API_KEY = "AQ.Ab8RN6Jg5AChTJxLLL6UtpZqp3a-ewxJo..." # మీ పూర్తి కీని ఇక్కడ పేస్ట్ చేయండి
 
-genai.configure(api_key=AQ.Ab8RN6Jg5AChTJxLLL6UtpZqp3a-ewxJoKmYyKtdQydons5gWQ)
-
+genai.configure(api_key="AQ.Ab8RN6Jg5AChTJxLLL6UtpZqp3a-ewxJoKmYyKtdQydons5gWQ")
 st.set_page_config(page_title="BNS Legal Assistant", page_icon="⚖️", layout="centered")
 
 st.title("⚖️ BNS, BNSS & BSA లీగల్ అసిస్టెంట్")
