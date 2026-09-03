@@ -1,69 +1,117 @@
 import streamlit as st
+from PIL import Image
 from google import genai
-import tempfile
-import time
-import os
 
-st.set_page_config(page_title="Gemini AI All-in-One", page_icon="🤖")
-st.title("🤖 Gemini AI తెలుగు అసిస్టెంట్")
+st.set_page_config(
+    page_title="BNS Legal Assistant",
+    page_icon="⚖️",
+    layout="centered"
+)
 
-# మీ API కీ
-API_KEY = "YOUR_GEMINI_API_KEY_HERE"
-client = genai.Client(api_key=API_KEY)
+st.title("⚖️ BNS, BNSS & BSA లీగల్ అసిస్టెంట్")
+st.write("కేసు వివరాలు నమోదు చేయండి లేదా ఫిర్యాదు కాపీ ఫోటో అప్‌లోడ్ చేయండి.")
 
-# 1. డాక్యుమెంట్ అప్‌లోడర్ (ఐచ్ఛికం - Optional)
-uploaded_file = st.file_uploader("డాక్యుమెంట్ ఉంటే ఇక్కడ అప్‌లోడ్ చేయండి (PDF, TXT, ఇమేజ్ మొదలైనవి):", type=["pdf", "txt", "png", "jpg", "jpeg"])
+tab1, tab2 = st.tabs(["📝 టెక్స్ట్ వివరాలు", "📷 ఫోటో / డాక్యుమెంట్"])
 
-# 2. టెక్స్ట్ ప్రశ్న (తప్పనిసరి)
-user_prompt = st.text_area("మీ ప్రశ్న ఇక్కడ టైప్ చేయండి:", placeholder="ఉదా: సాధారణ ప్రశ్న అడగండి లేదా పైన అప్‌లోడ్ చేసిన ఫైల్ గురించి అడగండి...")
+case_text = ""
+uploaded_image = None
 
-# 503 ఎర్రర్ వస్తే రీట్రై చేసే ఫంక్షన్
-def generate_with_retry(contents_list, max_retries=3, delay=5):
-    for attempt in range(1, max_retries + 1):
-        try:
-            return client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=contents_list
-            )
-        except Exception as err:
-            if "503" in str(err) and attempt < max_retries:
-                st.warning(f"సర్వర్ బిజీగా ఉంది. {delay} సెకన్లలో మళ్లీ ప్రయత్నిస్తున్నాం... (ప్రయత్నం {attempt}/{max_retries})")
-                time.sleep(delay)
-                delay *= 2
-            else:
-                raise err
+with tab1:
+    text_input = st.text_area(
+        "ఫిర్యాదు వివరాలు ఇక్కడ రాయండి:",
+        height=150
+    )
 
-# సమాధానం బటన్
-if st.button("సమాధానం పంపు"):
-    if not user_prompt.strip() and not uploaded_file:
-        st.warning("దయచేసి ఏదైనా ప్రశ్న రాయండి లేదా ఫైల్ అప్‌లోడ్ చేయండి!")
+    if text_input:
+        case_text = text_input
+
+with tab2:
+    uploaded_file = st.file_uploader(
+        "ఫిర్యాదు కాపీ లేదా FIR ఫోటో ఎంచుకోండి",
+        type=["jpg", "jpeg", "png"]
+    )
+
+    if uploaded_file:
+        uploaded_image = Image.open(uploaded_file)
+
+        st.image(
+            uploaded_image,
+            caption="అప్‌లోడ్ చేసిన చిత్రం",
+            use_container_width=True
+        )
+
+if st.button("కేస్ విశ్లేషించండి (Analyze)", type="primary"):
+
+    if not case_text and not uploaded_image:
+        st.warning("దయచేసి వివరాలు రాయండి లేదా ఫోటో అప్‌లోడ్ చేయండి.")
+
     else:
-        with st.spinner("సమాధానం రూపొందిస్తోంది..."):
+        with st.spinner("BNS, BNSS, BSA చట్టాల ప్రకారం పరిశీలిస్తోంది..."):
+
+            prompt = """
+మీరు భారతీయ క్రిమినల్ లా గురించి సమాచారాన్ని అందించే
+లీగల్ అసిస్టెంట్.
+
+ఇచ్చిన ఫిర్యాదు వివరాలను Teluguలో విశ్లేషించండి.
+చట్టంలోని తాజా provisions ను ఖచ్చితంగా verify చేయాల్సిన
+అవసరం ఉన్న చోట స్పష్టంగా సూచించండి.
+
+కింది headingsలో structured output ఇవ్వండి:
+
+1. వర్తించే BNS Sections & Punishments
+   - వర్తించే BNS సెక్షన్లు
+   - శిక్షలు
+   - అవసరమైతే పాత IPC sectionతో పోలిక
+
+2. BNSS Procedures
+   - FIR / investigation procedure
+   - Notice provisions
+   - Arrest-related provisions
+   - అవసరమైన procedural steps
+
+3. BSA Evidence Guidelines
+   - Documentary evidence
+   - Electronic evidence
+   - Digital evidence requirements
+   - Panchanama / seizure-related considerations
+
+4. IO కోసం Step-by-Step Investigation Checklist
+   - మొదట చేయాల్సిన పని
+   - Evidence collection
+   - Witness examination
+   - Documents
+   - Final investigation steps
+
+ముఖ్యమైన చట్టపరమైన నిర్ణయాలను ఖచ్చితమైన facts
+ఆధారంగా మాత్రమే ఇవ్వండి. అవసరమైతే "ఇది సాధారణ
+చట్టపరమైన సమాచారం మాత్రమే; కేసు facts ఆధారంగా
+న్యాయ నిపుణుడిని సంప్రదించాలి" అని సూచించండి.
+"""
+
             try:
-                contents = []
 
-                # ఫైల్ ఉంటే ప్రాసెస్ చేయడం
-                if uploaded_file is not None:
-                    suffix = os.path.splitext(uploaded_file.name)[1]
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-                        tmp_file.write(uploaded_file.getvalue())
-                        tmp_path = tmp_file.name
+                # API key Streamlit Secrets నుండి తీసుకుంటుంది
+                client = genai.Client(
+                    api_key=st.secrets["GEMINI_API_KEY"]
+                )
 
-                    # Files API ద్వారా అప్‌లోడ్
-                    uploaded_doc = client.files.upload(file=tmp_path)
-                    contents.append(uploaded_doc)
-                    os.remove(tmp_path)
+                content = [prompt]
 
-                # యూజర్ రాసిన ప్రశ్నను జత చేయడం
-                prompt_text = user_prompt.strip() if user_prompt.strip() else "ఈ ఫైల్‌లోని ముఖ్యమైన వివరాలను వివరించండి."
-                contents.append(prompt_text)
+                if uploaded_image:
+                    content.append(uploaded_image)
 
-                # కాల్ చేయడం
-                response = generate_with_retry(contents)
+                if case_text:
+                    content.append(
+                        f"అదనపు కేసు వివరాలు:\n{case_text}"
+                    )
 
-                st.success("పూర్తయింది!")
-                st.write("### సమాధానం:")
-                st.write(response.text)
+                response = client.models.generate_content(
+                    model="gemini-3.6-flash",
+                    contents=content
+                )
+
+                st.markdown("### 📋 దర్యాప్తు నివేదిక:")
+                st.markdown(response.text)
 
             except Exception as e:
-                st.error(f"ఎర్రర్ ఏర్పడింది: {e}")
+                st.error(f"విశ్లేషణలో లోపం ఏర్పడింది: {e}")
