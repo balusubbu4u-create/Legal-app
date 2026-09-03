@@ -2,182 +2,116 @@ import streamlit as st
 from PIL import Image
 from google import genai
 
-
-# --------------------------------------------------
-# Page settings
-# --------------------------------------------------
-
 st.set_page_config(
-    page_title="Legal Case Analyzer",
+    page_title="BNS Legal Assistant",
     page_icon="⚖️",
-    layout="wide"
+    layout="centered"
 )
 
+st.title("⚖️ BNS, BNSS & BSA లీగల్ అసిస్టెంట్")
+st.write("కేసు వివరాలు నమోదు చేయండి లేదా ఫిర్యాదు కాపీ ఫోటో అప్‌లోడ్ చేయండి.")
 
-# --------------------------------------------------
-# Title
-# --------------------------------------------------
+tab1, tab2 = st.tabs(["📝 టెక్స్ట్ వివరాలు", "📷 ఫోటో / డాక్యుమెంట్"])
 
-st.title("⚖️ కేస్ విశ్లేషణ (Analyze)")
-st.write("కేసుకు సంబంధించిన వివరాలను నమోదు చేసి విశ్లేషణ పొందండి.")
-
-
-# --------------------------------------------------
-# Gemini Client
-# --------------------------------------------------
-
-try:
-    client = genai.Client(
-        api_key=st.secrets["GEMINI_API_KEY"]
-    )
-except Exception as e:
-    st.error("Gemini API Key లో సమస్య ఉంది.")
-    st.error(str(e))
-    st.stop()
-
-
-# --------------------------------------------------
-# Prompt
-# --------------------------------------------------
-
-prompt = """
-మీరు ఒక Legal Case Analysis Assistant.
-
-క్రింద ఇచ్చిన కేసు వివరాలను జాగ్రత్తగా విశ్లేషించండి.
-
-దయచేసి ఈ క్రింది అంశాల ప్రకారం సమాధానం ఇవ్వండి:
-
-1. కేసు సంక్షిప్త వివరణ
-2. ముఖ్యమైన వాస్తవాలు
-3. ప్రధాన ఆరోపణలు / సమస్యలు
-4. అందుబాటులో ఉన్న ఆధారాలు
-5. ఆధారాలలో ఉన్న బలాలు
-6. ఆధారాలలో ఉన్న బలహీనతలు
-7. సంఘటనల కాలక్రమం
-8. ఇంకా అవసరమైన సమాచారం
-9. తదుపరి దర్యాప్తులో పరిశీలించాల్సిన అంశాలు
-10. తుది విశ్లేషణ
-
-ఇది సాధారణ సమాచార/విశ్లేషణ కోసం మాత్రమే.
-చట్టపరమైన తుది నిర్ణయంగా పరిగణించకూడదు.
-"""
-
-
-# --------------------------------------------------
-# Case details
-# --------------------------------------------------
-
-case_text = st.text_area(
-    "కేసు వివరాలు నమోదు చేయండి:",
-    height=250,
-    placeholder="ఇక్కడ కేసుకు సంబంధించిన పూర్తి వివరాలను నమోదు చేయండి..."
-)
-
-
-# --------------------------------------------------
-# Image upload
-# --------------------------------------------------
-
-uploaded_file = st.file_uploader(
-    "కేసుకు సంబంధించిన చిత్రం / Screenshot upload చేయండి (Optional)",
-    type=["jpg", "jpeg", "png"]
-)
-
+case_text = ""
 uploaded_image = None
 
-if uploaded_file is not None:
-    try:
+with tab1:
+    text_input = st.text_area(
+        "ఫిర్యాదు వివరాలు ఇక్కడ రాయండి:",
+        height=150
+    )
+
+    if text_input:
+        case_text = text_input
+
+with tab2:
+    uploaded_file = st.file_uploader(
+        "ఫిర్యాదు కాపీ లేదా FIR ఫోటో ఎంచుకోండి",
+        type=["jpg", "jpeg", "png"]
+    )
+
+    if uploaded_file:
         uploaded_image = Image.open(uploaded_file)
 
         st.image(
             uploaded_image,
-            caption="Uploaded Image",
+            caption="అప్‌లోడ్ చేసిన చిత్రం",
             use_container_width=True
         )
 
-    except Exception as e:
-        st.error(f"Image open చేయడంలో సమస్య: {e}")
+if st.button("కేస్ విశ్లేషించండి (Analyze)", type="primary"):
 
+    if not case_text and not uploaded_image:
+        st.warning("దయచేసి వివరాలు రాయండి లేదా ఫోటో అప్‌లోడ్ చేయండి.")
 
-# --------------------------------------------------
-# Analyze button
-# --------------------------------------------------
+    else:
+        with st.spinner("BNS, BNSS, BSA చట్టాల ప్రకారం పరిశీలిస్తోంది..."):
 
-if st.button("🔍 Analyze Case", type="primary"):
+            prompt = """
+మీరు భారతీయ క్రిమినల్ లా గురించి సమాచారాన్ని అందించే
+లీగల్ అసిస్టెంట్.
 
-    if not case_text.strip() and uploaded_image is None:
-        st.warning("దయచేసి కేసు వివరాలు లేదా image కనీసం ఒకటి ఇవ్వండి.")
-        st.stop()
+ఇచ్చిన ఫిర్యాదు వివరాలను Teluguలో విశ్లేషించండి.
+చట్టంలోని తాజా provisions ను ఖచ్చితంగా verify చేయాల్సిన
+అవసరం ఉన్న చోట స్పష్టంగా సూచించండి.
 
-    try:
+కింది headingsలో structured output ఇవ్వండి:
 
-        # ------------------------------------------
-        # Content
-        # ------------------------------------------
+1. వర్తించే BNS Sections & Punishments
+   - వర్తించే BNS సెక్షన్లు
+   - శిక్షలు
+   - అవసరమైతే పాత IPC sectionతో పోలిక
 
-        content = [prompt]
+2. BNSS Procedures
+   - FIR / investigation procedure
+   - Notice provisions
+   - Arrest-related provisions
+   - అవసరమైన procedural steps
 
-        if case_text.strip():
-            content.append(
-                f"""
-కేసు వివరాలు:
+3. BSA Evidence Guidelines
+   - Documentary evidence
+   - Electronic evidence
+   - Digital evidence requirements
+   - Panchanama / seizure-related considerations
 
-{case_text}
+4. IO కోసం Step-by-Step Investigation Checklist
+   - మొదట చేయాల్సిన పని
+   - Evidence collection
+   - Witness examination
+   - Documents
+   - Final investigation steps
+
+ముఖ్యమైన చట్టపరమైన నిర్ణయాలను ఖచ్చితమైన facts
+ఆధారంగా మాత్రమే ఇవ్వండి. అవసరమైతే "ఇది సాధారణ
+చట్టపరమైన సమాచారం మాత్రమే; కేసు facts ఆధారంగా
+న్యాయ నిపుణుడిని సంప్రదించాలి" అని సూచించండి.
 """
-            )
 
-        if uploaded_image is not None:
-            content.append(uploaded_image)
+            try:
 
+                # API key Streamlit Secrets నుండి తీసుకుంటుంది
+                client = genai.Client(
+                    api_key=st.secrets["GEMINI_API_KEY"]
+                )
 
-        # ------------------------------------------
-        # Gemini request
-        # ------------------------------------------
+                content = [prompt]
 
-        with st.spinner("కేసును విశ్లేషిస్తోంది..."):
+                if uploaded_image:
+                    content.append(uploaded_image)
 
-            response = client.models.generate_content(
-                model="gemini-1.5-flash",
-                contents=content
-            )
+                if case_text:
+                    content.append(
+                        f"అదనపు కేసు వివరాలు:\n{case_text}"
+                    )
 
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=content
+                )
 
-        # ------------------------------------------
-        # Result
-        # ------------------------------------------
+                st.markdown("### 📋 దర్యాప్తు నివేదిక:")
+                st.markdown(response.text)
 
-        st.markdown("### 📋 దర్యాప్తు నివేదిక:")
-
-        if response.text:
-            st.markdown(response.text)
-        else:
-            st.warning("Gemini నుంచి text response రాలేదు.")
-
-
-    # ----------------------------------------------
-    # Error handling
-    # ----------------------------------------------
-
-    except Exception as e:
-
-        error_message = str(e)
-
-        if "503" in error_message or "UNAVAILABLE" in error_message:
-
-            st.error(
-                "Gemini model ప్రస్తుతం అధిక వినియోగంలో ఉంది. "
-                "కొద్దిసేపటి తర్వాత మళ్లీ ప్రయత్నించండి."
-            )
-
-        elif "API key" in error_message or "api_key" in error_message:
-
-            st.error(
-                "Gemini API Key లో సమస్య ఉంది. "
-                "Streamlit Secrets లో GEMINI_API_KEY సరిగ్గా ఉందో చూడండి."
-            )
-
-        else:
-
-            st.error(
-                f"విశ్లేషణలో లోపం ఏర్పడింది:\n\n{error_message}"
-)
+            except Exception as e:
+                st.error(f"విశ్లేషణలో లోపం ఏర్పడింది: {e}")
