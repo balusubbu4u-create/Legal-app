@@ -1,6 +1,7 @@
 import streamlit as st
 from PIL import Image
 from google import genai
+from google.genai import types  # <--- 1. కాన్ఫిగరేషన్ కోసం types ఇంపోర్ట్ చేసాము
 
 st.set_page_config(
     page_title="BNS Legal Assistant",
@@ -21,7 +22,6 @@ with tab1:
         "ఫిర్యాదు వివరాలు ఇక్కడ రాయండి:",
         height=150
     )
-
     if text_input:
         case_text = text_input
 
@@ -30,10 +30,8 @@ with tab2:
         "ఫిర్యాదు కాపీ లేదా FIR ఫోటో ఎంచుకోండి",
         type=["jpg", "jpeg", "png"]
     )
-
     if uploaded_file:
         uploaded_image = Image.open(uploaded_file)
-
         st.image(
             uploaded_image,
             caption="అప్‌లోడ్ చేసిన చిత్రం",
@@ -44,70 +42,71 @@ if st.button("కేస్ విశ్లేషించండి (Analyze)", t
 
     if not case_text and not uploaded_image:
         st.warning("దయచేసి వివరాలు రాయండి లేదా ఫోటో అప్‌లోడ్ చేయండి.")
-
     else:
         with st.spinner("BNS, BNSS, BSA చట్టాల ప్రకారం పరిశీలిస్తోంది..."):
 
-            prompt = """
-మీరు భారతీయ క్రిమినల్ లా గురించి సమాచారాన్ని అందించే
-లీగల్ అసిస్టెంట్.
+            # 2. మోడల్‌కు స్పష్టమైన నియమాలు (System Instruction)
+            legal_system_instruction = """
+మీరు భారతీయ క్రిమినల్ చట్టాలు (Bharatiya Nyaya Sanhita - BNS, Bharatiya Nagarik Suraksha Sanhita - BNSS, Bharatiya Sakshya Adhiniyam - BSA) పై ప్రావీణ్యం ఉన్న అధికారిక లీగల్ అసిస్టెంట్.
 
-ఇచ్చిన ఫిర్యాదు వివరాలను Teluguలో విశ్లేషించండి.
-చట్టంలోని తాజా provisions ను ఖచ్చితంగా verify చేయాల్సిన
-అవసరం ఉన్న చోట స్పష్టంగా సూచించండి.
-
-కింది headingsలో structured output ఇవ్వండి:
+ముఖ్య నియమాలు:
+1. ఇచ్చిన ఫిర్యాదు/చిత్రంలోని వాస్తవాల (facts) ఆధారంగా మాత్రమే ఖచ్చితమైన సెక్షన్లు పేర్కొనాలి.
+2. చట్టపరమైన సెక్షన్లలో ఎలాంటి ఊహాజనిత (hallucinated) నంబర్లు చెప్పకూడదు. పూర్తి స్పష్టత లేని చోట "పరిశీలించాల్సిన సెక్షన్" అని మాత్రమే రాయాలి.
+3. స్పష్టమైన Telugu లో క్రింది నిర్మాణం (Headings) లో మాత్రమే నివేదిక ఇవ్వాలి:
 
 1. వర్తించే BNS Sections & Punishments
    - వర్తించే BNS సెక్షన్లు
    - శిక్షలు
-   - అవసరమైతే పాత IPC sectionతో పోలిక
+   - అవసరమైతే పాత IPC సెక్షన్లతో పోలిక
 
 2. BNSS Procedures
-   - FIR / investigation procedure
-   - Notice provisions
-   - Arrest-related provisions
-   - అవసరమైన procedural steps
+   - FIR / దర్యాప్తు ప్రక్రియ
+   - నోటీసు ప్రొవిజన్లు (ఉదా: Sec 35 BNSS)
+   - అరెస్ట్ నిబంధనలు
+   - అవసరమైన ఇతర చట్టపరమైన చర్యలు
 
 3. BSA Evidence Guidelines
-   - Documentary evidence
-   - Electronic evidence
-   - Digital evidence requirements
-   - Panchanama / seizure-related considerations
+   - పత్రాల ఆధారాలు (Documentary evidence)
+   - ఎలక్ట్రానిక్ / డిజిటల్ ఆధారాల నిబంధనలు (BSA సెక్షన్ 61, 63 సర్టిఫికేషన్లు మొదలైనవి)
+   - పంచనామా / సీజర్ పరిశీలనలు
 
-4. IO కోసం Step-by-Step Investigation Checklist
-   - మొదట చేయాల్సిన పని
-   - Evidence collection
-   - Witness examination
-   - Documents
-   - Final investigation steps
+4. IO (Investigating Officer) కోసం Step-by-Step Investigation Checklist
+   - ప్రాథమిక చర్యలు
+   - సాక్ష్యాధారాల సేకరణ
+   - సాక్షుల విచారణ
+   - తుది దర్యాప్తు దశలు
 
-ముఖ్యమైన చట్టపరమైన నిర్ణయాలను ఖచ్చితమైన facts
-ఆధారంగా మాత్రమే ఇవ్వండి. అవసరమైతే "ఇది సాధారణ
-చట్టపరమైన సమాచారం మాత్రమే; కేసు facts ఆధారంగా
-న్యాయ నిపుణుడిని సంప్రదించాలి" అని సూచించండి.
+చివరలో తప్పనిసరిగా "గమనిక: ఇది ప్రాథమిక సమాచారం మాత్రమే; తుది చట్టపరమైన నిర్ణయాలకు నిపుణులను సంప్రదించాలి" అని రాయండి.
 """
 
             try:
-
-                # API key Streamlit Secrets నుండి తీసుకుంటుంది
+                # 3. Client & Configuration సెటప్
                 client = genai.Client(
                     api_key=st.secrets["GEMINI_API_KEY"]
                 )
 
-                content = [prompt]
+                # Temperature = 0.0 పెట్టడం వల్ల తప్పులు రాకుండా ఖచ్చితమైన సెక్షన్లు వస్తాయి
+                config = types.GenerateContentConfig(
+                    system_instruction=legal_system_instruction,
+                    temperature=0.0,
+                    top_p=0.95
+                )
+
+                content = []
 
                 if uploaded_image:
                     content.append(uploaded_image)
 
                 if case_text:
-                    content.append(
-                        f"అదనపు కేసు వివరాలు:\n{case_text}"
-                    )
+                    content.append(f"కేసు ఫిర్యాదు వివరాలు:\n{case_text}")
+                else:
+                    content.append("అప్‌లోడ్ చేసిన డాక్యుమెంట్ లేదా ఫోటోలోని వివరాలను చదివి పై నియమాల ప్రకారం విశ్లేషించండి.")
 
+                # 4. మోడల్ కాల్
                 response = client.models.generate_content(
                     model="gemini-3.6-flash",
-                    contents=content
+                    contents=content,
+                    config=config
                 )
 
                 st.markdown("### 📋 దర్యాప్తు నివేదిక:")
