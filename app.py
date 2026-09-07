@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 from PIL import Image
 from google import genai
@@ -99,27 +100,29 @@ if st.button("కేస్ విశ్లేషించండి (Analyze)", t
                 else:
                     content.append("అప్‌లోడ్ చేసిన డాక్యుమెంట్ లేదా ఫోటోలోని వివరాలను చదివి పై నియమాల ప్రకారం విశ్లేషించండి.")
 
-                try:
-                    response = client.models.generate_content(
-                        model="gemini-3.6-flash",
-                        contents=content,
-                        config=config
-                    )
-                except Exception as model_err:
-                    if "503" in str(model_err) or "UNAVAILABLE" in str(model_err):
+                # సర్వర్ రద్దీ ఉన్నప్పుడు ఆటోమేటిక్ Retry చేసే విధానం (3 సార్లు ప్రయత్నిస్తుంది)
+                response = None
+                max_retries = 3
+                for attempt in range(max_retries):
+                    try:
                         response = client.models.generate_content(
-                            model="gemini-2.5-flash",
+                            model="gemini-3.6-flash",
                             contents=content,
                             config=config
                         )
-                    else:
-                        raise model_err
+                        break  # రెస్పాన్స్ విజయవంతంగా వస్తే లూప్ ఆగిపోతుంది
+                    except Exception as err:
+                        if ("503" in str(err) or "UNAVAILABLE" in str(err)) and attempt < max_retries - 1:
+                            time.sleep(3)  # రద్దీ ఉంటే 3 సెకన్లు ఆగి మళ్లీ ప్రయత్నిస్తుంది
+                        else:
+                            raise err
 
-                st.markdown("### 📋 దర్యాప్తు నివేదిక:")
-                st.markdown(response.text)
+                if response and response.text:
+                    st.markdown("### 📋 దర్యాప్తు నివేదిక:")
+                    st.markdown(response.text)
 
             except Exception as e:
-                if "503" in str(e):
-                    st.error("గూగుల్ సర్వర్లలో తాత్కాలిక రద్దీ ఉంది. దయచేసి ఒక నిమిషం తర్వాత మళ్లీ ప్రయత్నించండి.")
+                if "503" in str(e) or "UNAVAILABLE" in str(e):
+                    st.error("గూగుల్ సర్వర్లలో తాత్కాలిక రద్దీ ఎక్కువగా ఉంది. దయచేసి కొన్ని సెకన్లు ఆగి మళ్లీ ప్రయత్నించండి.")
                 else:
                     st.error(f"విశ్లేషణలో లోపం ఏర్పడింది: {e}")
