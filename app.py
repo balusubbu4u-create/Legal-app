@@ -44,8 +44,7 @@ if st.button("కేస్ విశ్లేషించండి (Analyze)", t
     if not case_text and not uploaded_image:
         st.warning("దయచేసి వివరాలు రాయండి లేదా ఫోటో అప్‌లోడ్ చేయండి.")
     else:
-        with st.spinner("BNS, BNSS, BSA చట్టాల ప్రకారం పరిశీలిస్తోంది..."):
-    legal_system_instruction = """
+        legal_system_instruction = """
 మీరు భారతీయ క్రిమినల్ చట్టాలు (Bharatiya Nyaya Sanhita - BNS, Bharatiya Nagarik Suraksha Sanhita - BNSS, Bharatiya Sakshya Adhiniyam - BSA) పై ప్రావీణ్యం ఉన్న అధికారిక లీగల్ అసిస్టెంట్.
 
 ముఖ్య నియమాలు & మార్గదర్శకాలు:
@@ -82,6 +81,11 @@ if st.button("కేస్ విశ్లేషించండి (Analyze)", t
 చివరలో తప్పనిసరిగా:
 "గమనిక: ఇది ప్రాథమిక సమాచారం మరియు దర్యాప్తు మార్గదర్శకత్వం కోసం మాత్రమే; తుది చట్టపరమైన నిర్ణయాలు మరియు కోర్టు ప్రక్రియల కోసం న్యాయ నిపుణులను సంప్రదించాలి." అని రాయండి.
 """
+
+with st.spinner("BNS, BNSS, BSA చట్టాల ప్రకారం పరిశీలిస్తోంది..."):
+    # ఇక్కడ మీ మోడల్ రన్ చేసే కోడ్ (4 spaces ఇండెంటేషన్‌తో) ఉండాలి
+    # ఉదాహరణకు:
+    # response = model.generate_content(...)
 
             try:
                 client = genai.Client(
