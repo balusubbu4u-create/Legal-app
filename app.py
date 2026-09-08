@@ -83,6 +83,8 @@ if st.button("కేస్ విశ్లేషించండి (Analyze)", t
 """
 
 with st.spinner("BNS, BNSS, BSA చట్టాల ప్రకారం పరిశీలిస్తోంది..."):
+
+with st.spinner("BNS, BNSS, BSA చట్టాల ప్రకారం పరిశీలిస్తోంది..."):
     # ఇక్కడ మీ మోడల్ రన్ చేసే కోడ్ (4 spaces ఇండెంటేషన్‌తో) ఉండాలి
     # ఉదాహరణకు:
     # response = model.generate_content(...)
