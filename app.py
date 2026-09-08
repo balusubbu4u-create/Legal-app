@@ -45,8 +45,6 @@ if st.button("కేస్ విశ్లేషించండి (Analyze)", t
         st.warning("దయచేసి వివరాలు రాయండి లేదా ఫోటో అప్‌లోడ్ చేయండి.")
     else:
         with st.spinner("BNS, BNSS, BSA చట్టాల ప్రకారం పరిశీలిస్తోంది..."):
-
-    # ఈ క్రింది legal_system_instruction లోపల ఉన్న భాగాన్ని మాత్రమే మార్చండి:
     legal_system_instruction = """
 మీరు భారతీయ క్రిమినల్ చట్టాలు (Bharatiya Nyaya Sanhita - BNS, Bharatiya Nagarik Suraksha Sanhita - BNSS, Bharatiya Sakshya Adhiniyam - BSA) పై ప్రావీణ్యం ఉన్న అధికారిక లీగల్ అసిస్టెంట్.
 
