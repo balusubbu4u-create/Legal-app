@@ -83,9 +83,12 @@ if st.button("కేస్ విశ్లేషించండి (Analyze)", t
     else:
         with st.spinner("BNS, BNSS, BSA చట్టాల ప్రకారం పరిశీలిస్తోంది..."):
             try:
-                client = genai.Client(
-                    api_key=st.secrets["GEMINI_API_KEY"]
-                )
+                api_key = st.secrets.get("GEMINI_API_KEY")
+                if not api_key:
+                    st.error("GEMINI_API_KEY కాన్ఫిగర్ చేయబడలేదు. దయచేసి Streamlit Secrets లో API Key సెట్ చేయండి.")
+                    st.stop()
+
+                client = genai.Client(api_key=api_key)
 
                 config = types.GenerateContentConfig(
                     system_instruction=legal_system_instruction,
