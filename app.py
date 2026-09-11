@@ -29,7 +29,7 @@ with tab1:
 with tab2:
     uploaded_file = st.file_uploader(
         "ఫిర్యాదు కాపీ లేదా FIR ఫోటో ఎంచుకోండి",
-        type=["jpg", "jpeg", "png"]
+        type=["jpg", "jpeg", "pdf", "png"]
     )
     if uploaded_file:
         uploaded_image = Image.open(uploaded_file)
