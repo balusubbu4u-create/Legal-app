@@ -11,33 +11,41 @@ st.set_page_config(
 )
 
 st.title("⚖️ BNS, BNSS & BSA లీగల్ అసిస్టెంట్")
-st.write("కేసు వివరాలు నమోదు చేయండి లేదా ఫిర్యాదు కాపీ ఫోటో అప్‌లోడ్ చేయండి.")
+st.write("కేసు వివరాలు నమోదు చేయండి లేదా ఫిర్యాదు కాపీ ఫోటో/PDF అప్‌లోడ్ చేయండి.")
 
 tab1, tab2 = st.tabs(["📝 టెక్స్ట్ వివరాలు", "📷 ఫోటో / డాక్యుమెంట్"])
 
 case_text = ""
 uploaded_image = None
+uploaded_pdf_bytes = None
 
 with tab1:
     text_input = st.text_area(
         "ఫిర్యాదు వివరాలు ఇక్కడ రాయండి:",
-        height=150
+        height=150,
+        key="legal_text_area"
     )
     if text_input:
         case_text = text_input
 
 with tab2:
     uploaded_file = st.file_uploader(
-        "ఫిర్యాదు కాపీ లేదా FIR ఫోటో ఎంచుకోండి",
-        type=["jpg", "jpeg", "pdf", "png"]
+        "ఫిర్యాదు కాపీ లేదా FIR ఫోటో / PDF ఎంచుకోండి",
+        type=["jpg", "jpeg", "pdf", "png"],
+        key="legal_file_uploader"
     )
     if uploaded_file:
-        uploaded_image = Image.open(uploaded_file)
-        st.image(
-            uploaded_image,
-            caption="అప్‌లోడ్ చేసిన చిత్రం",
-            use_container_width=True
-        )
+        file_type = uploaded_file.type
+        if file_type == "application/pdf":
+            uploaded_pdf_bytes = uploaded_file.getvalue()
+            st.success(f"✅ PDF ఫైల్ లోడ్ అయింది: {uploaded_file.name}")
+        else:
+            uploaded_image = Image.open(uploaded_file)
+            st.image(
+                uploaded_image,
+                caption="అప్‌లోడ్ చేసిన చిత్రం",
+                use_container_width=True
+            )
 
 legal_system_instruction = """
 మీరు భారతీయ క్రిమినల్ చట్టాలు (Bharatiya Nyaya Sanhita - BNS, Bharatiya Nagarik Suraksha Sanhita - BNSS, Bharatiya Sakshya Adhiniyam - BSA) పై ప్రావీణ్యం ఉన్న అధికారిక లీగల్ అసిస్టెంట్.
@@ -78,28 +86,57 @@ legal_system_instruction = """
 """
 
 if st.button("కేస్ విశ్లేషించండి (Analyze)", type="primary"):
-    if not case_text and not uploaded_image:
-        st.warning("దయచేసి వివరాలు రాయండి లేదా ఫోటో అప్‌లోడ్ చేయండి.")
+    if not case_text and not uploaded_image and not uploaded_pdf_bytes:
+        st.warning("దయచేసి వివరాలు రాయండి లేదా ఫోటో/PDF అప్‌లోడ్ చేయండి.")
     else:
         with st.spinner("BNS, BNSS, BSA చట్టాల ప్రకారం పరిశీలిస్తోంది..."):
             try:
                 api_key = st.secrets.get("GEMINI_API_KEY")
                 if not api_key:
-                    st.error("GEMINI_API_KEY కాన్ఫిగర్ చేయబడలేదు. దయచేసి Streamlit Secrets లో API Key సెట్ చేయండి.")
+                    st.error("GEMINI_API_KEY కాన్ఫిగర్ చేయబడలేదు. Streamlit Secrets లో సెట్ చేయండి.")
                     st.stop()
 
                 client = genai.Client(api_key=api_key)
 
+                # లీగల్ కంటెంట్‌లోని క్రైమ్ వివరాలు బ్లాక్ అవ్వకుండా Safety Settings
+                safety_settings = [
+                    types.SafetySetting(
+                        category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                        threshold=types.HarmBlockThreshold.BLOCK_ONLY_HIGH
+                    ),
+                    types.SafetySetting(
+                        category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                        threshold=types.HarmBlockThreshold.BLOCK_ONLY_HIGH
+                    ),
+                    types.SafetySetting(
+                        category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                        threshold=types.HarmBlockThreshold.BLOCK_ONLY_HIGH
+                    ),
+                    types.SafetySetting(
+                        category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                        threshold=types.HarmBlockThreshold.BLOCK_ONLY_HIGH
+                    ),
+                ]
+
                 config = types.GenerateContentConfig(
                     system_instruction=legal_system_instruction,
                     temperature=0.0,
-                    top_p=0.95
+                    top_p=0.95,
+                    safety_settings=safety_settings
                 )
 
                 content = []
 
+                # ఇమేజ్ లేదా PDF ని కంటెంట్‌కి జోడించడం
                 if uploaded_image:
                     content.append(uploaded_image)
+                elif uploaded_pdf_bytes:
+                    content.append(
+                        types.Part.from_bytes(
+                            data=uploaded_pdf_bytes,
+                            mime_type="application/pdf"
+                        )
+                    )
 
                 if case_text:
                     content.append(f"కేసు ఫిర్యాదు వివరాలు:\n{case_text}")
@@ -125,6 +162,14 @@ if st.button("కేస్ విశ్లేషించండి (Analyze)", t
                 if response and response.text:
                     st.markdown("### 📋 దర్యాప్తు నివేదిక:")
                     st.markdown(response.text)
+
+                    # రిపోర్ట్ డౌన్‌లోడ్ బటన్
+                    st.download_button(
+                        label="📥 నివేదిక డౌన్‌లోడ్ చేయండి (TXT)",
+                        data=response.text,
+                        file_name="BNS_Legal_Report.txt",
+                        mime="text/plain"
+                    )
 
             except Exception as e:
                 if "503" in str(e) or "UNAVAILABLE" in str(e):
